@@ -12,7 +12,7 @@ const simTypes = [
         <path d="M13 8l-5 5-5-5M3 3h10" />
       </svg>
     ),
-    matchPaths: ["/quick-sim", "/sim"],
+    matchPaths: ["/quick-sim"],
   },
   {
     href: "/top-gear",

@@ -62,5 +62,8 @@ class JobStatusResponse(BaseModel):
     id: str
     status: str
     progress: int = 0
+    progress_stage: str | None = None
+    progress_detail: str | None = None
+    stages_completed: list[str] = []
     result: dict[str, Any] | None = None
     error: str | None = None

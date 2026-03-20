@@ -7,10 +7,24 @@ use tokio::process::Command;
 
 const SIMC_TIMEOUT_SECS: u64 = 600;
 
-fn simc_threads() -> u32 {
+fn max_threads() -> u32 {
     std::thread::available_parallelism()
         .map(|n| n.get() as u32)
         .unwrap_or(4)
+}
+
+/// Resolve the thread count from the API options.
+/// A value of 0 (or absent) means use all available threads.
+fn resolve_threads(options: &Value) -> u32 {
+    let requested = options
+        .get("threads")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0) as u32;
+    if requested == 0 {
+        max_threads()
+    } else {
+        requested.min(max_threads()).max(1)
+    }
 }
 
 const OVERRIDES: &[&str] = &[
@@ -67,6 +81,7 @@ async fn run_simc_subprocess(
     fight_style: &str,
     target_error: f64,
     iterations: u32,
+    threads: u32,
     calculate_scale_factors: bool,
     stage_name: &str,
     on_profileset_progress: impl Fn(usize, usize),
@@ -110,7 +125,7 @@ async fn run_simc_subprocess(
         .arg(format!("iterations={}", iterations))
         .arg(format!("fight_style={}", fight_style))
         .arg(format!("target_error={}", target_error))
-        .arg(format!("threads={}", simc_threads()))
+        .arg(format!("threads={}", threads))
         .arg(format!(
             "calculate_scale_factors={}",
             if calculate_scale_factors { "1" } else { "0" }
@@ -295,6 +310,7 @@ pub async fn run_simc(
         .get("sim_type")
         .and_then(|v| v.as_str())
         == Some("stat_weights");
+    let threads = resolve_threads(options);
 
     run_simc_subprocess(
         simc_path,
@@ -303,6 +319,7 @@ pub async fn run_simc(
         fight_style,
         target_error,
         iterations,
+        threads,
         calculate_scale_factors,
         "",
         |_, _| {}, // Quick sim has no profilesets to track
@@ -328,6 +345,7 @@ pub async fn run_simc_staged(
         .get("iterations")
         .and_then(|v| v.as_u64())
         .unwrap_or(1000) as u32;
+    let threads = resolve_threads(options);
 
     if combo_count < STAGED_THRESHOLD {
         on_progress(5, "Simulating", &format!("{} combos", combo_count));
@@ -342,6 +360,7 @@ pub async fn run_simc_staged(
             fight_style,
             target_error,
             user_iterations,
+            threads,
             false,
             "direct",
             |current, total| {
@@ -392,6 +411,7 @@ pub async fn run_simc_staged(
             fight_style,
             stage.target_error,
             stage_iterations[stage_idx],
+            threads,
             false,
             &stage.name.to_lowercase(),
             |current, total| {

@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { API_URL } from "../lib/api";
+import ThreadPresetSelector from "./ThreadPresetSelector";
 
 export default function SimForm() {
   const [simcInput, setSimcInput] = useState("");
   const [simType, setSimType] = useState<"quick" | "stat_weights">("quick");
+  const [threads, setThreads] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -29,6 +31,7 @@ export default function SimForm() {
           fight_style: "Patchwerk",
           target_error: 0.1,
           sim_type: simType,
+          threads,
         }),
       });
       if (!res.ok) {
@@ -77,6 +80,10 @@ export default function SimForm() {
             {t === "quick" ? "Quick Sim" : "Stat Weights"}
           </button>
         ))}
+      </div>
+
+      <div className="card p-5">
+        <ThreadPresetSelector value={threads} onChange={setThreads} />
       </div>
 
       {error && (

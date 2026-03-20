@@ -165,12 +165,23 @@ async def run_simc_staged(
     simc_input: str,
     options: dict,
     combo_count: int,
+    on_progress=None,
+    on_stage_complete=None,
 ) -> dict:
     """Run a multi-stage simulation for Top Gear."""
     fight_style = options.get("fight_style", "Patchwerk")
     user_iterations = options.get("iterations", 1000)
 
+    async def _progress(pct: int, stage: str, detail: str):
+        if on_progress:
+            await on_progress(pct, stage, detail)
+
+    async def _stage_complete(summary: str):
+        if on_stage_complete:
+            await on_stage_complete(summary)
+
     if combo_count < _STAGED_THRESHOLD:
+        await _progress(10, "Simulating", f"{combo_count} combos")
         return await _run_simc_subprocess(
             job_id=job_id,
             simc_input=simc_input,
@@ -190,8 +201,17 @@ async def run_simc_staged(
         user_iterations,
     ]
 
+    stage_ranges = [(10, 40), (40, 70), (70, 95)]
+
     for stage_idx, stage in enumerate(_STAGES):
         is_final = stage_idx == len(_STAGES) - 1
+        range_start, _range_end = stage_ranges[stage_idx]
+
+        await _progress(
+            range_start,
+            f"Stage {stage_idx + 1} of {len(_STAGES)}",
+            f"{remaining} combos · {stage['name']} precision",
+        )
 
         logger.info(
             f"Job {job_id}: Stage {stage['name']} — "
@@ -209,10 +229,12 @@ async def run_simc_staged(
         )
 
         if is_final:
+            await _stage_complete(f"{stage['name']} · {remaining} combos · done")
             break
 
         profilesets = _get_profileset_results(result)
         if not profilesets:
+            await _stage_complete(f"{stage['name']} · no results")
             break
 
         keep_count = max(
@@ -221,10 +243,17 @@ async def run_simc_staged(
         )
 
         if keep_count >= len(profilesets):
+            await _stage_complete(
+                f"{stage['name']} · kept all {len(profilesets)} combos"
+            )
             continue
 
         sorted_ps = sorted(profilesets, key=lambda p: p.get("mean", 0), reverse=True)
         keep_combos = {ps["name"] for ps in sorted_ps[:keep_count]}
+
+        await _stage_complete(
+            f"{stage['name']} · {len(profilesets)} → {len(keep_combos)} combos"
+        )
 
         logger.info(
             f"Job {job_id}: Stage {stage['name']} complete — "

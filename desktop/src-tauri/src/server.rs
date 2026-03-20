@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use crate::game_data;
 use crate::models::{Job, JobStatus, JobStore};
@@ -17,6 +17,31 @@ use crate::addon_parser;
 /// Newtype wrapper to avoid colliding with the simc `web::Data<PathBuf>`.
 #[derive(Clone)]
 struct FrontendDir(PathBuf);
+
+/// Shared system info state, refreshed in background for live CPU readings.
+struct SystemStats {
+    sys: sysinfo::System,
+}
+
+impl SystemStats {
+    fn new() -> Self {
+        let mut sys = sysinfo::System::new();
+        sys.refresh_cpu_all();
+        Self { sys }
+    }
+
+    fn refresh(&mut self) {
+        self.sys.refresh_cpu_all();
+    }
+
+    fn cpu_usage(&self) -> f32 {
+        let cpus = self.sys.cpus();
+        if cpus.is_empty() {
+            return 0.0;
+        }
+        cpus.iter().map(|c| c.cpu_usage()).sum::<f32>() / cpus.len() as f32
+    }
+}
 
 // ---------- Request / Response types ----------
 
@@ -33,6 +58,8 @@ pub struct SimRequest {
     pub sim_type: String,
     #[serde(default)]
     pub max_upgrade: bool,
+    #[serde(default)]
+    pub threads: u32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -50,6 +77,8 @@ pub struct TopGearRequest {
     pub max_upgrade: bool,
     #[serde(default)]
     pub copy_enchants: bool,
+    #[serde(default)]
+    pub threads: u32,
 }
 
 #[derive(Debug, Serialize)]
@@ -110,6 +139,7 @@ async fn create_sim(
         "target_error": req.target_error,
         "iterations": req.iterations,
         "sim_type": req.sim_type,
+        "threads": req.threads,
     });
     let job_id_clone = job_id.clone();
 
@@ -211,6 +241,7 @@ async fn create_top_gear_sim(
         "fight_style": req.fight_style,
         "target_error": req.target_error,
         "iterations": req.iterations,
+        "threads": req.threads,
     });
     let job_id_clone = job_id.clone();
 
@@ -473,6 +504,15 @@ async fn health_check() -> HttpResponse {
     }))
 }
 
+async fn system_stats(stats: web::Data<Arc<Mutex<SystemStats>>>) -> HttpResponse {
+    let mut s = stats.lock().unwrap();
+    s.refresh();
+    let cpu = s.cpu_usage();
+    HttpResponse::Ok().json(json!({
+        "cpu_usage": (cpu * 10.0).round() / 10.0,
+    }))
+}
+
 /// SPA fallback: serve the appropriate HTML file for client-side routes
 async fn spa_fallback(req: HttpRequest, frontend_dir: web::Data<FrontendDir>) -> actix_web::Result<NamedFile> {
     let path = req.path();
@@ -509,9 +549,11 @@ pub async fn start(resource_dir: &Path, frontend_dir: Option<PathBuf>) -> u16 {
     let simc_path_buf: PathBuf = simc_path;
 
     let job_store = Arc::new(JobStore::new());
+    let sys_stats = Arc::new(Mutex::new(SystemStats::new()));
 
     let store_data = web::Data::new(job_store);
     let simc_data = web::Data::new(simc_path_buf);
+    let stats_data = web::Data::new(sys_stats);
     let frontend = frontend_dir.clone();
 
     let bind_addr = format!("127.0.0.1:{}", port);
@@ -527,6 +569,7 @@ pub async fn start(resource_dir: &Path, frontend_dir: Option<PathBuf>) -> u16 {
             .wrap(cors)
             .app_data(store_data.clone())
             .app_data(simc_data.clone())
+            .app_data(stats_data.clone())
             .route("/api/sim", web::post().to(create_sim))
             .route("/api/top-gear/sim", web::post().to(create_top_gear_sim))
             .route("/api/sim/{id}", web::get().to(get_sim_status))
@@ -536,7 +579,8 @@ pub async fn start(resource_dir: &Path, frontend_dir: Option<PathBuf>) -> u16 {
             .route("/api/enchant-info/{id}", web::get().to(get_enchant_info))
             .route("/api/gem-info/{id}", web::get().to(get_gem_info))
             .route("/api/upgrade-options", web::get().to(get_upgrade_options))
-            .route("/health", web::get().to(health_check));
+            .route("/health", web::get().to(health_check))
+            .route("/api/system-stats", web::get().to(system_stats));
 
         // Serve static frontend files in production (not in dev mode)
         if let Some(ref dir) = frontend {

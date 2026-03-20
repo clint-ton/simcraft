@@ -89,7 +89,11 @@ async def create_top_gear_sim(
 
 
 @router.get("/api/sim/{job_id}", response_model=JobStatusResponse)
-async def get_sim_status(job_id: str, session: AsyncSession = Depends(get_session)):
+async def get_sim_status(
+    job_id: str,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+):
     result = await session.execute(select(Job).where(Job.id == job_id))
     job = result.scalar_one_or_none()
     if not job:
@@ -99,9 +103,23 @@ async def get_sim_status(job_id: str, session: AsyncSession = Depends(get_sessio
     if job.status == JobStatus.DONE and job.result_json:
         parsed_result = json.loads(job.result_json)
 
+    # Read live progress from Redis (written by the worker)
     progress = 0
+    progress_stage = None
+    progress_detail = None
+    stages_completed: list[str] = []
+
     if job.status == JobStatus.RUNNING:
-        progress = 50
+        redis = request.app.state.redis
+        progress_data = await redis.get(f"job:{job_id}:progress")
+        if progress_data:
+            pdata = json.loads(progress_data)
+            progress = pdata.get("pct", 50)
+            progress_stage = pdata.get("stage")
+            progress_detail = pdata.get("detail")
+            stages_completed = pdata.get("stages_completed", [])
+        else:
+            progress = 5
     elif job.status == JobStatus.DONE:
         progress = 100
 
@@ -109,6 +127,9 @@ async def get_sim_status(job_id: str, session: AsyncSession = Depends(get_sessio
         id=job.id,
         status=job.status.value,
         progress=progress,
+        progress_stage=progress_stage,
+        progress_detail=progress_detail,
+        stages_completed=stages_completed,
         result=parsed_result,
         error=job.error_message,
     )

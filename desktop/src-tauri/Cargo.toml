@@ -18,6 +18,7 @@ regex = "1"
 tempfile = "3"
 portpicker = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
+sysinfo = "0.33"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

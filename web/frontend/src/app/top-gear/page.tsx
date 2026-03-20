@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import ThreadPresetSelector from "../components/ThreadPresetSelector";
 import TopGearItemSelector from "../components/TopGearItemSelector";
 import {
   ItemsBySlot,
@@ -23,6 +24,7 @@ export default function TopGearPage() {
   const [targetError, setTargetError] = useState(0.1);
   const [maxUpgrade, setMaxUpgrade] = useState(false);
   const [copyEnchants, setCopyEnchants] = useState(true);
+  const [threads, setThreads] = useState(0);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -76,6 +78,7 @@ export default function TopGearPage() {
           target_error: targetError,
           max_upgrade: maxUpgrade,
           copy_enchants: copyEnchants,
+          threads,
         }),
       });
       if (!res.ok) {
@@ -236,6 +239,9 @@ export default function TopGearPage() {
                     <span>Fast</span>
                   </div>
                 </div>
+              </div>
+              <div className="mt-6">
+                <ThreadPresetSelector value={threads} onChange={setThreads} />
               </div>
             </div>
           )}

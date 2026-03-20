@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { API_URL } from "../lib/api";
 
 interface SimStatusProps {
   status: string;
@@ -52,6 +53,44 @@ function useSmoothedProgress(serverProgress: number, isRunning: boolean): number
   return Math.round(display);
 }
 
+/** Poll CPU usage from the desktop backend while a sim is running. */
+function useCpuUsage(isRunning: boolean): number | null {
+  const [cpu, setCpu] = useState<number | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isDesktop = useRef(false);
+
+  useEffect(() => {
+    isDesktop.current = !!(window as unknown as { __TAURI_INTERNALS__?: unknown })
+      .__TAURI_INTERNALS__;
+  }, []);
+
+  useEffect(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+
+    if (!isRunning || !isDesktop.current) {
+      setCpu(null);
+      intervalRef.current = null;
+      return;
+    }
+
+    function fetchCpu() {
+      fetch(`${API_URL}/api/system-stats`)
+        .then((r) => r.json())
+        .then((d) => setCpu(d.cpu_usage ?? null))
+        .catch(() => {});
+    }
+
+    fetchCpu();
+    intervalRef.current = setInterval(fetchCpu, 1500);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [isRunning]);
+
+  return cpu;
+}
+
 export default function SimStatus({
   status,
   progress,
@@ -61,6 +100,7 @@ export default function SimStatus({
 }: SimStatusProps) {
   const isRunning = status === "running";
   const displayProgress = useSmoothedProgress(progress, isRunning);
+  const cpuUsage = useCpuUsage(isRunning);
   const title = progressStage || (status === "pending" ? "Queued" : "Simulating");
   const hasStages = stagesCompleted && stagesCompleted.length > 0;
 
@@ -82,9 +122,16 @@ export default function SimStatus({
             style={{ width: `${Math.max(displayProgress, status === "pending" ? 2 : 5)}%` }}
           />
         </div>
-        <p className="text-[10px] text-gray-600 text-center mt-1.5 font-mono tabular-nums">
-          {displayProgress}%
-        </p>
+        <div className="flex items-center justify-between mt-1.5">
+          <p className="text-[10px] text-gray-600 font-mono tabular-nums">
+            {displayProgress}%
+          </p>
+          {cpuUsage !== null && (
+            <p className="text-[10px] text-gray-600 font-mono tabular-nums">
+              CPU {Math.round(cpuUsage)}%
+            </p>
+          )}
+        </div>
       </div>
 
       {hasStages && (

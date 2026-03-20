@@ -2,6 +2,7 @@ import json
 import logging
 
 from arq.connections import RedisSettings
+from redis.asyncio import Redis
 from sqlalchemy import select
 
 from config import settings
@@ -13,15 +14,43 @@ from services.simc import run_simc, run_simc_staged
 logger = logging.getLogger(__name__)
 
 
+class ProgressReporter:
+    """Writes live progress to Redis so the API can read it."""
+
+    def __init__(self, redis: Redis, job_id: str):
+        self._redis = redis
+        self._key = f"job:{job_id}:progress"
+        self._stages_completed: list[str] = []
+
+    async def update(self, pct: int, stage: str, detail: str):
+        data = json.dumps({
+            "pct": pct,
+            "stage": stage,
+            "detail": detail,
+            "stages_completed": self._stages_completed,
+        })
+        await self._redis.set(self._key, data, ex=600)
+
+    async def complete_stage(self, summary: str):
+        self._stages_completed.append(summary)
+
+    async def cleanup(self):
+        await self._redis.delete(self._key)
+
+
 async def run_simulation(ctx: dict, job_id: str):
     """ARQ task: run a SimulationCraft simulation for the given job."""
     await init_db()
+
+    redis = Redis.from_url(settings.REDIS_URL)
+    progress = ProgressReporter(redis, job_id)
 
     async with async_session() as session:
         result = await session.execute(select(Job).where(Job.id == job_id))
         job = result.scalar_one_or_none()
         if not job:
             logger.error(f"Job {job_id} not found")
+            await redis.aclose()
             return
 
         job.status = JobStatus.RUNNING
@@ -51,9 +80,12 @@ async def run_simulation(ctx: dict, job_id: str):
                     simc_input=job.simc_input,
                     options=sim_options,
                     combo_count=combo_count,
+                    on_progress=progress.update,
+                    on_stage_complete=progress.complete_stage,
                 )
                 parsed = parse_top_gear_result(raw_result, combo_metadata)
             else:
+                await progress.update(20, "Simulating", "")
                 raw_result = await run_simc(
                     job_id=job.id,
                     simc_input=job.simc_input,
@@ -71,6 +103,8 @@ async def run_simulation(ctx: dict, job_id: str):
             job.status = JobStatus.FAILED
 
         await session.commit()
+        await progress.cleanup()
+        await redis.aclose()
 
 
 class WorkerSettings:
