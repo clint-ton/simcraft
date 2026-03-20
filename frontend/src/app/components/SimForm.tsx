@@ -14,6 +14,7 @@ export default function SimForm() {
   const [fightStyle, setFightStyle] = useState("Patchwerk");
   const [targetError, setTargetError] = useState(0.1);
   const [simType, setSimType] = useState<"quick" | "stat_weights">("quick");
+  const [maxUpgrade, setMaxUpgrade] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -37,6 +38,7 @@ export default function SimForm() {
           fight_style: fightStyle,
           target_error: targetError,
           sim_type: simType,
+          max_upgrade: maxUpgrade,
         }),
       });
       if (!res.ok) {
@@ -159,6 +161,31 @@ export default function SimForm() {
               ))}
             </div>
           </div>
+        </div>
+
+        <div className="border-t border-border/50 mt-5 pt-4">
+          <label className="flex items-center gap-3 cursor-pointer group">
+            <div
+              className={`w-9 h-5 rounded-full transition-colors relative ${
+                maxUpgrade ? "bg-gold" : "bg-surface-2 border border-border"
+              }`}
+              onClick={() => setMaxUpgrade(!maxUpgrade)}
+            >
+              <div
+                className={`absolute top-0.5 w-4 h-4 rounded-full transition-all ${
+                  maxUpgrade ? "left-[18px] bg-black" : "left-0.5 bg-gray-500"
+                }`}
+              />
+            </div>
+            <div>
+              <span className="text-[13px] font-medium text-gray-300 group-hover:text-white transition-colors">
+                Sim Highest Upgrade
+              </span>
+              <p className="text-[11px] text-gray-600">
+                Simulate all items at their max upgrade level
+              </p>
+            </div>
+          </label>
         </div>
       </div>
 

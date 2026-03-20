@@ -1,15 +1,27 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ItemsBySlot, ParsedItem, GEAR_SLOTS } from "../lib/parseAddonString";
 import { useItemInfo, useEnchantInfo, useGemInfo, getIconUrl, getWowheadUrl, getWowheadData, QUALITY_COLORS } from "../lib/useItemInfo";
 import type { ItemQuery, ItemInfo, EnchantInfo, GemInfo } from "../lib/useItemInfo";
 import { useWowheadTooltips } from "../lib/useWowheadTooltips";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+interface UpgradeOption {
+  bonus_id: number;
+  level: number;
+  max: number;
+  name: string;
+  fullName: string;
+  itemLevel: number;
+}
+
 interface TopGearItemSelectorProps {
   itemsBySlot: ItemsBySlot;
   selectedItems: Record<string, number[]>;
   onSelectionChange: (selected: Record<string, number[]>) => void;
+  onItemsChange: (items: ItemsBySlot) => void;
 }
 
 interface DisplayGroup {
@@ -45,14 +57,73 @@ export default function TopGearItemSelector({
   itemsBySlot,
   selectedItems,
   onSelectionChange,
+  onItemsChange,
 }: TopGearItemSelectorProps) {
+  const [upgradeMenuFor, setUpgradeMenuFor] = useState<string | null>(null);
+  const [upgradeOptions, setUpgradeOptions] = useState<UpgradeOption[]>([]);
+  const [loadingUpgrades, setLoadingUpgrades] = useState(false);
+
+  const openUpgradeMenu = useCallback(async (item: ParsedItem, slot: string, key: string) => {
+    if (upgradeMenuFor === key) {
+      setUpgradeMenuFor(null);
+      return;
+    }
+    setUpgradeMenuFor(key);
+    setLoadingUpgrades(true);
+    try {
+      const res = await fetch(`${API_URL}/api/upgrade-options?bonus_ids=${item.bonus_ids.join(",")}`);
+      const data = await res.json();
+      setUpgradeOptions(data.options || []);
+    } catch {
+      setUpgradeOptions([]);
+    }
+    setLoadingUpgrades(false);
+  }, [upgradeMenuFor]);
+
+  const addUpgradedCopy = useCallback((item: ParsedItem, slot: string, option: UpgradeOption) => {
+    // Find the current upgrade bonus_id to replace
+    const currentUpgradeBonusId = upgradeOptions.find(
+      o => item.bonus_ids.includes(o.bonus_id)
+    )?.bonus_id;
+    if (!currentUpgradeBonusId) return;
+
+    // Build new bonus_ids
+    const newBonusIds = item.bonus_ids.map(b => b === currentUpgradeBonusId ? option.bonus_id : b);
+
+    // Replace bonus_id value in simc_string using regex (order/separator agnostic)
+    const newSimcString = item.simc_string.replace(
+      /bonus_id=[0-9/:]+/,
+      `bonus_id=${newBonusIds.join("/")}`
+    );
+
+    const copy: ParsedItem = {
+      ...item,
+      bonus_ids: newBonusIds,
+      simc_string: newSimcString,
+      ilevel: option.itemLevel,
+      is_equipped: false,
+    };
+
+    // Add copy to itemsBySlot
+    const updated = { ...itemsBySlot };
+    updated[slot] = [...(updated[slot] || []), copy];
+    onItemsChange(updated);
+
+    // Auto-select the new copy
+    const newIdx = updated[slot].length - 1;
+    const sel = { ...selectedItems };
+    sel[slot] = [...(sel[slot] || []), newIdx];
+    onSelectionChange(sel);
+
+    setUpgradeMenuFor(null);
+  }, [itemsBySlot, selectedItems, upgradeOptions, onItemsChange, onSelectionChange]);
   const allItemQueries = useMemo(() => {
     const seen = new Set<string>();
     const queries: ItemQuery[] = [];
     for (const items of Object.values(itemsBySlot)) {
       for (const item of items) {
         if (item.item_id <= 0) continue;
-        const key = `${item.item_id}:${(item.bonus_ids || []).sort().join(":")}`;
+        const key = `${item.item_id}:${[...(item.bonus_ids || [])].sort().join(":")}`;
         if (!seen.has(key)) {
           seen.add(key);
           queries.push({ item_id: item.item_id, bonus_ids: item.bonus_ids });
@@ -103,7 +174,7 @@ export default function TopGearItemSelector({
     for (const group of DISPLAY_GROUPS) {
       const equipped: DisplayItem[] = [];
       const alternatives: DisplayItem[] = [];
-      const seenAltIds = new Set<number>();
+      const seenAltKeys = new Set<string>();
       for (let si = 0; si < group.slots.length; si++) {
         const slot = group.slots[si];
         const items = itemsBySlot[slot];
@@ -119,8 +190,9 @@ export default function TopGearItemSelector({
                 group.slots.length > 1 ? `Slot ${si + 1}` : undefined,
             });
           } else {
-            if (item.item_id && seenAltIds.has(item.item_id)) continue;
-            if (item.item_id) seenAltIds.add(item.item_id);
+            const key = `${item.item_id}:${[...item.bonus_ids].sort().join(",")}`;
+            if (seenAltKeys.has(key)) continue;
+            seenAltKeys.add(key);
             alternatives.push({ item, slot, index: idx });
           }
         }
@@ -276,6 +348,12 @@ export default function TopGearItemSelector({
                     gem={di.item.gem_id > 0 ? gemInfoMap[di.item.gem_id] : undefined}
                     qc={qc}
                     name={name}
+                    upgradeMenuKey={`${di.slot}-${di.index}`}
+                    upgradeMenuFor={upgradeMenuFor}
+                    upgradeOptions={upgradeOptions}
+                    loadingUpgrades={loadingUpgrades}
+                    onUpgradeClick={() => openUpgradeMenu(di.item, di.slot, `${di.slot}-${di.index}`)}
+                    onUpgradeSelect={(opt) => addUpgradedCopy(di.item, di.slot, opt)}
                   />
                 </div>
               );
@@ -352,6 +430,12 @@ export default function TopGearItemSelector({
                     gem={di.item.gem_id > 0 ? gemInfoMap[di.item.gem_id] : undefined}
                     qc={qc}
                     name={name}
+                    upgradeMenuKey={`${di.slot}-${di.index}`}
+                    upgradeMenuFor={upgradeMenuFor}
+                    upgradeOptions={upgradeOptions}
+                    loadingUpgrades={loadingUpgrades}
+                    onUpgradeClick={() => openUpgradeMenu(di.item, di.slot, `${di.slot}-${di.index}`)}
+                    onUpgradeSelect={(opt) => addUpgradedCopy(di.item, di.slot, opt)}
                   />
                 </label>
               );
@@ -370,6 +454,12 @@ function ItemDetails({
   gem,
   qc,
   name,
+  upgradeMenuKey,
+  upgradeMenuFor,
+  upgradeOptions,
+  loadingUpgrades,
+  onUpgradeClick,
+  onUpgradeSelect,
 }: {
   di: DisplayItem;
   info: ItemInfo | null;
@@ -377,11 +467,19 @@ function ItemDetails({
   gem?: GemInfo;
   qc: string;
   name: string;
+  upgradeMenuKey: string;
+  upgradeMenuFor: string | null;
+  upgradeOptions: UpgradeOption[];
+  loadingUpgrades: boolean;
+  onUpgradeClick: () => void;
+  onUpgradeSelect: (opt: UpgradeOption) => void;
 }) {
   const ilevel = di.item.ilevel || info?.ilevel || 0;
   const tag = info?.tag;
   const upgrade = info?.upgrade;
   const sockets = info?.sockets;
+  const hasUpgrade = !!upgrade;
+  const isMenuOpen = upgradeMenuFor === upgradeMenuKey;
 
   // Build subtitle parts
   const parts: { text: string; color?: string }[] = [];
@@ -396,7 +494,7 @@ function ItemDetails({
 
   return (
     <>
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 relative">
         <a
           href={di.item.item_id > 0 ? getWowheadUrl(di.item.item_id) : undefined}
           data-wowhead={di.item.item_id > 0 ? getWowheadData(di.item.bonus_ids, di.item.ilevel, di.item.enchant_id, di.item.gem_id) : undefined}
@@ -418,10 +516,55 @@ function ItemDetails({
             ))}
           </span>
         )}
+        {isMenuOpen && (
+          <div className="absolute left-0 top-full mt-1 z-50 bg-surface border border-border rounded-lg shadow-xl py-1 min-w-[180px]">
+            {loadingUpgrades ? (
+              <div className="px-3 py-2 text-[11px] text-muted">Loading...</div>
+            ) : upgradeOptions.length === 0 ? (
+              <div className="px-3 py-2 text-[11px] text-muted">No options</div>
+            ) : (
+              upgradeOptions.map((opt) => {
+                const isCurrent = di.item.bonus_ids.includes(opt.bonus_id);
+                return (
+                  <button
+                    key={opt.bonus_id}
+                    type="button"
+                    disabled={isCurrent}
+                    onClick={(e) => { e.stopPropagation(); onUpgradeSelect(opt); }}
+                    className={`w-full text-left px-3 py-1.5 text-[11px] flex items-center justify-between gap-2 ${
+                      isCurrent
+                        ? "text-muted cursor-default"
+                        : "text-gray-300 hover:bg-white/[0.05] hover:text-white"
+                    }`}
+                  >
+                    <span>{opt.fullName}</span>
+                    <span className="font-mono tabular-nums text-[10px] text-muted">{opt.itemLevel}</span>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        )}
       </div>
-      <span className="text-[10px] text-muted font-mono tabular-nums shrink-0">
-        {ilevel > 0 && ilevel}
-      </span>
+      <div className="flex items-center gap-1 shrink-0">
+        {hasUpgrade && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); e.preventDefault(); onUpgradeClick(); }}
+            className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${
+              isMenuOpen ? "bg-gold/20 text-gold" : "text-gray-600 hover:text-gray-400 hover:bg-white/[0.05]"
+            }`}
+            title="Add copy at different upgrade level"
+          >
+            <svg className="w-3 h-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M8 12V4M5 7l3-3 3 3" />
+            </svg>
+          </button>
+        )}
+        <span className="text-[10px] text-muted font-mono tabular-nums">
+          {ilevel > 0 && ilevel}
+        </span>
+      </div>
     </>
   );
 }

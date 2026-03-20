@@ -78,3 +78,13 @@ async def get_enchant_info(enchant_id: int):
 async def get_gem_info(gem_id: int):
     """Look up gem info by item ID from local game data."""
     return game_data.get_gem_info(gem_id) or {"gem_id": gem_id, "name": "", "icon": "", "quality": 3}
+
+
+@router.get("/api/upgrade-options")
+async def get_upgrade_options(bonus_ids: str):
+    """Get all upgrade levels for an item given its bonus IDs."""
+    ids = [int(b) for b in bonus_ids.split(",") if b.strip()]
+    options = game_data.get_upgrade_options(ids)
+    if not options:
+        return {"options": []}
+    return {"options": options}

@@ -8,6 +8,7 @@ from database import get_session
 from models import Job, JobStatus
 from schemas import JobStatusResponse, SimRequest, SimResponse, TopGearRequest
 from services.addon_parser import parse_addon_string
+from services.game_data import upgrade_simc_input
 from services.profileset_generator import generate_top_gear_input
 
 router = APIRouter(tags=["sim"])
@@ -25,8 +26,9 @@ async def create_sim(
     request: Request,
     session: AsyncSession = Depends(get_session),
 ):
+    simc_input = upgrade_simc_input(req.simc_input) if req.max_upgrade else req.simc_input
     job = Job(
-        simc_input=req.simc_input,
+        simc_input=simc_input,
         sim_type=req.sim_type.value,
         iterations=req.iterations,
         fight_style=req.fight_style.value,
@@ -46,11 +48,13 @@ async def create_top_gear_sim(
     request: Request,
     session: AsyncSession = Depends(get_session),
 ):
-    parsed = parse_addon_string(req.simc_input)
+    simc_input = upgrade_simc_input(req.simc_input) if req.max_upgrade else req.simc_input
+    parsed = parse_addon_string(simc_input)
+    items_by_slot = req.items_by_slot if req.items_by_slot else parsed["items_by_slot"]
     try:
         simc_input, combo_count, combo_metadata = generate_top_gear_input(
             base_profile=parsed["base_profile"],
-            items_by_slot=parsed["items_by_slot"],
+            items_by_slot=items_by_slot,
             selected_items=req.selected_items,
         )
     except ValueError as e:

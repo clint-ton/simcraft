@@ -19,11 +19,13 @@ _enchants: dict[int, dict] = {}
 _enchants_by_item_id: dict[int, dict] = {}
 _bonuses: dict[int, dict] = {}
 _item_curves: dict[int, dict] = {}
+# Maps upgrade bonus_id -> max-level bonus_id in the same group
+_upgrade_max: dict[int, int] = {}
 
 
 def load():
     """Load all game data files into memory. Call once at startup."""
-    global _items, _enchants, _enchants_by_item_id, _bonuses, _item_curves
+    global _items, _enchants, _enchants_by_item_id, _bonuses, _item_curves, _upgrade_max
 
     # equippable-items-full.json — array of {id, name, icon, quality, itemLevel, ...}
     items_path = DATA_DIR / "equippable-items-full.json"
@@ -50,7 +52,17 @@ def load():
         with open(bonuses_path, encoding="utf-8") as f:
             bonuses_raw = json.load(f)
         _bonuses = {int(k): v for k, v in bonuses_raw.items()}
-        logger.info(f"Loaded {len(_bonuses)} bonuses from bonuses.json")
+        # Build upgrade group index: for each upgrade bonus, find the max-level bonus
+        groups: dict[int, list[dict]] = {}
+        for b in _bonuses.values():
+            if "upgrade" in b:
+                gid = b["upgrade"]["group"]
+                groups.setdefault(gid, []).append(b)
+        for members in groups.values():
+            max_bonus = max(members, key=lambda b: b["upgrade"]["level"])
+            for b in members:
+                _upgrade_max[b["id"]] = max_bonus["id"]
+        logger.info(f"Loaded {len(_bonuses)} bonuses, {len(groups)} upgrade groups")
 
     # item-curves.json — object keyed by curve ID string
     curves_path = DATA_DIR / "item-curves.json"
@@ -129,6 +141,66 @@ def get_item_info(item_id: int, bonus_ids: list[int] | None = None) -> dict[str,
         "sockets": sockets,
         "upgrade": upgrade,
     }
+
+
+def get_upgrade_options(bonus_ids: list[int]) -> list[dict[str, Any]] | None:
+    """Get all upgrade levels for an item's bonus IDs.
+
+    Returns list of {bonus_id, level, max, name, fullName, itemLevel} sorted by level,
+    or None if the item has no upgrade track.
+    """
+    for bid in bonus_ids:
+        if bid in _upgrade_max:
+            # Found an upgrade bonus — get its group
+            bonus = _bonuses.get(bid)
+            if not bonus or "upgrade" not in bonus:
+                continue
+            group_id = bonus["upgrade"]["group"]
+            # Find all bonuses in this group
+            members = [
+                b for b in _bonuses.values()
+                if "upgrade" in b and b["upgrade"]["group"] == group_id
+            ]
+            members.sort(key=lambda b: b["upgrade"]["level"])
+            return [
+                {
+                    "bonus_id": b["id"],
+                    "level": b["upgrade"]["level"],
+                    "max": b["upgrade"]["max"],
+                    "name": b["upgrade"]["name"],
+                    "fullName": b["upgrade"]["fullName"],
+                    "itemLevel": b["upgrade"]["itemLevel"],
+                }
+                for b in members
+            ]
+    return None
+
+
+def swap_upgrade_bonus(bonus_ids: list[int], new_upgrade_bonus_id: int) -> list[int]:
+    """Replace the upgrade bonus ID in a list with a different one."""
+    return [
+        new_upgrade_bonus_id if bid in _upgrade_max else bid
+        for bid in bonus_ids
+    ]
+
+
+def upgrade_bonus_ids_to_max(bonus_ids: list[int]) -> list[int]:
+    """Replace any upgrade bonus ID with the max-level bonus in its group."""
+    return [_upgrade_max.get(bid, bid) for bid in bonus_ids]
+
+
+def upgrade_simc_input(simc_input: str) -> str:
+    """Rewrite all bonus_id= values in a simc input string to max upgrade level."""
+    import re
+
+    def _replace_bonus(match: re.Match) -> str:
+        raw = match.group(1)
+        ids = [int(b) for b in re.split(r"[/:]", raw) if b]
+        upgraded = upgrade_bonus_ids_to_max(ids)
+        sep = "/" if "/" in raw else ":"
+        return f"bonus_id={sep.join(str(b) for b in upgraded)}"
+
+    return re.sub(r"bonus_id=([0-9/:]+)", _replace_bonus, simc_input)
 
 
 def get_enchant_info(enchant_id: int) -> dict[str, Any] | None:

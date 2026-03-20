@@ -29,6 +29,7 @@ class SimRequest(BaseModel):
     fight_style: FightStyle = FightStyle.PATCHWERK
     target_error: float = Field(default=0.1, ge=0.1, le=1.0)
     sim_type: SimType = SimType.QUICK
+    max_upgrade: bool = False
 
 
 class SimResponse(BaseModel):
@@ -40,6 +41,7 @@ class SimResponse(BaseModel):
 class TopGearRequest(BaseModel):
     simc_input: str = Field(..., min_length=10)
     selected_items: dict[str, list[int]]
+    items_by_slot: dict[str, list[dict[str, Any]]] | None = None
     iterations: int = Field(
         default=settings.DEFAULT_ITERATIONS,
         ge=100,
@@ -47,6 +49,7 @@ class TopGearRequest(BaseModel):
     )
     fight_style: FightStyle = FightStyle.PATCHWERK
     target_error: float = Field(default=0.1, ge=0.1, le=1.0)
+    max_upgrade: bool = False
 
 
 class ItemInfoRequest(BaseModel):
