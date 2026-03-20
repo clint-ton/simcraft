@@ -2,11 +2,19 @@
 
 Self-hosted [SimulationCraft](https://github.com/simulationcraft/simc) web app. Paste your SimC addon string, configure options, and get DPS results with ability breakdowns, stat weights, and Top Gear comparisons.
 
+## Project Structure
+
+```
+simhammer/
+├── web/           Web app (backend + frontend + Docker)
+├── desktop/       Desktop app (Tauri, planned)
+```
+
 ## Quick Start (Docker)
 
 ```bash
 git clone <repo-url> simhammer
-cd simhammer
+cd simhammer/web
 cp .env.example .env
 docker compose up --build
 ```
@@ -15,14 +23,13 @@ docker compose up --build
 - API: http://localhost:8000
 - API docs: http://localhost:8000/docs
 
-The Docker build compiles `simc` from source (takes a few minutes on first build).
-
 ## Deploy to a VPS
 
 1. Clone the repo on your server
-2. Create `.env` from the example and set `SERVER_IP` to your domain or IP:
+2. Create `web/.env` and set `SERVER_IP`:
 
 ```bash
+cd simhammer/web
 cp .env.example .env
 nano .env
 # Set SERVER_IP=simhammer.com
@@ -49,31 +56,25 @@ redis-server
 
 ### 2. Backend
 ```bash
-cd backend
+cd web/backend
 python -m venv venv
-source venv/bin/activate  # or venv\Scripts\activate on Windows
+source venv/bin/activate
 pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
 
 ### 3. Worker
 ```bash
-cd backend
+cd web/backend
 source venv/bin/activate
 python -m arq worker.tasks.WorkerSettings
 ```
 
 ### 4. Frontend
 ```bash
-cd frontend
+cd web/frontend
 npm install
 npm run dev
-```
-
-### 5. SimulationCraft Binary
-Set the `SIMC_PATH` environment variable to your `simc` binary:
-```bash
-export SIMC_PATH=/path/to/simc
 ```
 
 ## Getting a SimC Addon String
@@ -92,21 +93,15 @@ export SIMC_PATH=/path/to/simc
 | `SIMC_THREADS` | `4` | Threads per simc process |
 | `SIMC_TIMEOUT` | `300` | Max seconds per simulation |
 | `DATABASE_URL` | `sqlite+aiosqlite:///./simhammer.db` | Database connection string |
-| `CORS_ORIGINS` | `["http://localhost:3000"]` | Allowed CORS origins |
 | `MAX_ITERATIONS` | `10000` | Maximum allowed iterations |
 | `DEFAULT_ITERATIONS` | `1000` | Default iteration count |
 | `DROP_DB_ON_STARTUP` | `false` | Wipe DB on boot (useful for dev) |
-| `NEXT_PUBLIC_API_URL` | `http://localhost:8000` | API URL for the frontend |
 | `SERVER_IP` | `localhost` | Server IP/domain used in docker-compose |
 
 ## Scaling Workers
 
 ```bash
-# Docker
 docker compose up --scale worker=4
-
-# Manual — run in multiple terminals
-python -m arq worker.tasks.WorkerSettings
 ```
 
 ## Architecture

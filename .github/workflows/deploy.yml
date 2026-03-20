@@ -3,6 +3,9 @@ name: Deploy to Hetzner
 on:
   push:
     branches: [master]
+    paths:
+      - 'web/**'
+      - '.github/workflows/deploy.yml'
 
 jobs:
   deploy:
@@ -17,6 +20,6 @@ jobs:
           script: |
             cd ~/simhammer
             git pull origin master
-            export SERVER_IP=${{ secrets.SERVER_HOST }}
+            cd web
             docker compose up -d --build
             docker image prune -f

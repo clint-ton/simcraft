@@ -21,4 +21,7 @@ Thumbs.db
 .claude/
 
 # Game data files (downloaded at build time)
-backend/data/*.json
+web/backend/data/*.json
+
+# Tauri build output
+desktop/src-tauri/target/
