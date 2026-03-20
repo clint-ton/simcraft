@@ -10,14 +10,6 @@ GEAR_SLOTS = [
     "trinket1", "trinket2", "main_hand", "off_hand",
 ]
 
-SLOT_LABELS = {
-    "head": "Head", "neck": "Neck", "shoulder": "Shoulder",
-    "back": "Back", "chest": "Chest", "wrist": "Wrist",
-    "hands": "Hands", "waist": "Waist", "legs": "Legs",
-    "feet": "Feet", "finger1": "Ring 1", "finger2": "Ring 2",
-    "trinket1": "Trinket 1", "trinket2": "Trinket 2",
-    "main_hand": "Main Hand", "off_hand": "Off Hand",
-}
 
 _SLOT_PATTERN = re.compile(
     r"^(" + "|".join(GEAR_SLOTS) + r")=(.*)", re.IGNORECASE

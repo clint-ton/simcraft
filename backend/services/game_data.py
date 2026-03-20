@@ -61,20 +61,6 @@ def load():
         logger.info(f"Loaded {len(_item_curves)} curves from item-curves.json")
 
 
-def get_item(item_id: int) -> dict | None:
-    """Look up an item by ID. Returns dict with id, name, icon, quality, itemLevel."""
-    return _items.get(item_id)
-
-
-def get_enchant(enchant_id: int) -> dict | None:
-    """Look up an enchant by ID. Returns dict with id, displayName, spellIcon, etc."""
-    return _enchants.get(enchant_id)
-
-
-def get_bonus(bonus_id: int) -> dict | None:
-    """Look up bonus data by ID."""
-    return _bonuses.get(bonus_id)
-
 
 def _resolve_bonuses(bonus_ids: list[int]) -> dict[str, Any]:
     """Extract quality, ilvl, tag, socket, and upgrade info from bonus IDs."""

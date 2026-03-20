@@ -1,8 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
 
-import httpx
-import redis.asyncio as aioredis
 from arq import create_pool
 from arq.connections import RedisSettings
 from fastapi import FastAPI
@@ -28,12 +26,8 @@ async def lifespan(app: FastAPI):
     app.state.redis = await create_pool(RedisSettings.from_dsn(settings.REDIS_URL))
     logger.info("Redis connection OK")
 
-    # Shared httpx client for Wowhead requests
-    app.state.http_client = httpx.AsyncClient(timeout=10.0)
-
     yield
 
-    await app.state.http_client.aclose()
     await app.state.redis.close()
     logger.info("Shutting down...")
 

@@ -39,14 +39,3 @@ class Job(Base):
     iterations = Column(Integer, nullable=False, default=1000)
     fight_style = Column(String(30), nullable=False, default="Patchwerk")
     target_error = Column(Float, nullable=False, default=0.2)
-
-
-class ItemCache(Base):
-    __tablename__ = "item_cache"
-
-    item_id = Column(Integer, primary_key=True)
-    bonus_ids = Column(String(200), primary_key=True, default="")
-    name = Column(String(200), nullable=False)
-    quality = Column(Integer, nullable=False, default=1)
-    icon = Column(String(200), nullable=False, default="inv_misc_questionmark")
-    ilevel = Column(Integer, nullable=False, default=0)

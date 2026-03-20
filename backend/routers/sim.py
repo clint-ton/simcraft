@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config import settings
 from database import get_session
 from models import Job, JobStatus
 from schemas import JobStatusResponse, SimRequest, SimResponse, TopGearRequest
