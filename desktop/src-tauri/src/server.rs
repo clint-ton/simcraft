@@ -60,6 +60,8 @@ pub struct SimRequest {
     pub max_upgrade: bool,
     #[serde(default)]
     pub threads: u32,
+    #[serde(default)]
+    pub talents: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -79,6 +81,8 @@ pub struct TopGearRequest {
     pub copy_enchants: bool,
     #[serde(default)]
     pub threads: u32,
+    #[serde(default)]
+    pub talents: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -107,6 +111,19 @@ fn default_fight_style() -> String { "Patchwerk".to_string() }
 fn default_target_error() -> f64 { 0.1 }
 fn default_sim_type() -> String { "quick".to_string() }
 
+/// Replace the talents= line in a simc input string with a new talent string.
+fn apply_talent_override(simc_input: &str, talents: &str) -> String {
+    if talents.is_empty() {
+        return simc_input.to_string();
+    }
+    let re = regex::Regex::new(r"(?m)^talents=.+$").unwrap();
+    if re.is_match(simc_input) {
+        re.replace(simc_input, format!("talents={}", talents)).to_string()
+    } else {
+        format!("{}\ntalents={}", simc_input, talents)
+    }
+}
+
 // ---------- Handlers ----------
 
 async fn create_sim(
@@ -114,11 +131,12 @@ async fn create_sim(
     store: web::Data<Arc<JobStore>>,
     simc_path: web::Data<PathBuf>,
 ) -> HttpResponse {
-    let simc_input = if req.max_upgrade {
+    let mut simc_input = if req.max_upgrade {
         game_data::upgrade_simc_input(&req.simc_input)
     } else {
         req.simc_input.clone()
     };
+    simc_input = apply_talent_override(&simc_input, &req.talents);
 
     let job = Job::new(
         simc_input.clone(),
@@ -170,11 +188,12 @@ async fn create_top_gear_sim(
     store: web::Data<Arc<JobStore>>,
     simc_path: web::Data<PathBuf>,
 ) -> HttpResponse {
-    let simc_input = if req.max_upgrade {
+    let mut simc_input = if req.max_upgrade {
         game_data::upgrade_simc_input(&req.simc_input)
     } else {
         req.simc_input.clone()
     };
+    simc_input = apply_talent_override(&simc_input, &req.talents);
 
     let parsed = addon_parser::parse_addon_string(&simc_input);
     let base_profile = parsed

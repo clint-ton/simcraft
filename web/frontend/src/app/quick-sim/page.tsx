@@ -5,7 +5,7 @@ import { useSimContext } from "../components/SimContext";
 import { API_URL } from "../lib/api";
 
 export default function QuickSimPage() {
-  const { simcInput, fightStyle, threads } = useSimContext();
+  const { simcInput, fightStyle, threads, selectedTalent } = useSimContext();
   const [simType, setSimType] = useState<"quick" | "stat_weights">("quick");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -29,6 +29,7 @@ export default function QuickSimPage() {
           target_error: 0.1,
           sim_type: simType,
           threads,
+          ...(selectedTalent ? { talents: selectedTalent } : {}),
         }),
       });
       if (!res.ok) {

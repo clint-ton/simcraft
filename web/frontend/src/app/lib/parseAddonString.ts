@@ -102,6 +102,56 @@ export function classMaxArmor(className: string | null): number | null {
   return CLASS_MAX_ARMOR[className] ?? null;
 }
 
+export interface TalentLoadout {
+  name: string;
+  talentString: string;
+  isActive: boolean;
+}
+
+/** Parse all talent loadouts from a simc input string. */
+export function parseTalentLoadouts(simcInput: string): TalentLoadout[] {
+  const loadouts: TalentLoadout[] = [];
+  const lines = simcInput.split("\n");
+  let pendingLabel = "";
+
+  for (const rawLine of lines) {
+    const stripped = rawLine.trim();
+
+    if (stripped.startsWith("#")) {
+      const clean = stripped.replace(/^#+\s*/, "");
+      const talentMatch = clean.match(/^talents=(.+)/);
+      if (talentMatch) {
+        const name = pendingLabel || `Loadout ${loadouts.length + 1}`;
+        loadouts.push({ name, talentString: talentMatch[1], isActive: false });
+        pendingLabel = "";
+      } else if (
+        !clean.match(SLOT_REGEX) &&
+        !clean.match(ITEM_HEADER_REGEX) &&
+        clean.length > 0 &&
+        clean.length < 60 &&
+        !clean.startsWith("gear_")
+      ) {
+        // Potential loadout name header (short non-gear comment)
+        pendingLabel = clean;
+      }
+    } else {
+      const talentMatch = stripped.match(/^talents=(.+)/);
+      if (talentMatch) {
+        loadouts.unshift({
+          name: pendingLabel || "Active",
+          talentString: talentMatch[1],
+          isActive: true,
+        });
+        pendingLabel = "";
+      } else {
+        pendingLabel = "";
+      }
+    }
+  }
+
+  return loadouts;
+}
+
 export function parseAddonString(simcInput: string): ItemsBySlot {
   const equipped: Record<string, ParsedItem> = {};
   const bagItems: Record<string, ParsedItem[]> = {};

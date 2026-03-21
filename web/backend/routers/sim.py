@@ -1,4 +1,5 @@
 import json
+import re
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
@@ -12,6 +13,16 @@ from services.game_data import apply_copy_enchants, upgrade_items_by_slot, upgra
 from services.profileset_generator import generate_top_gear_input
 
 router = APIRouter(tags=["sim"])
+
+_TALENT_RE = re.compile(r"(?m)^talents=.+$")
+
+
+def _apply_talent_override(simc_input: str, talents: str) -> str:
+    if not talents:
+        return simc_input
+    if _TALENT_RE.search(simc_input):
+        return _TALENT_RE.sub(f"talents={talents}", simc_input, count=1)
+    return f"{simc_input}\ntalents={talents}"
 
 
 async def _enqueue_job(request: Request, job_id: str):
@@ -27,6 +38,7 @@ async def create_sim(
     session: AsyncSession = Depends(get_session),
 ):
     simc_input = upgrade_simc_input(req.simc_input) if req.max_upgrade else req.simc_input
+    simc_input = _apply_talent_override(simc_input, req.talents)
     job = Job(
         simc_input=simc_input,
         sim_type=req.sim_type.value,
@@ -49,6 +61,7 @@ async def create_top_gear_sim(
     session: AsyncSession = Depends(get_session),
 ):
     simc_input = upgrade_simc_input(req.simc_input) if req.max_upgrade else req.simc_input
+    simc_input = _apply_talent_override(simc_input, req.talents)
     parsed = parse_addon_string(simc_input)
     items_by_slot = req.items_by_slot if req.items_by_slot else parsed["items_by_slot"]
     if req.max_upgrade:

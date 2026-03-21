@@ -30,6 +30,7 @@ class SimRequest(BaseModel):
     target_error: float = Field(default=0.1, ge=0.1, le=1.0)
     sim_type: SimType = SimType.QUICK
     max_upgrade: bool = False
+    talents: str = ""
 
 
 class SimResponse(BaseModel):
@@ -51,6 +52,7 @@ class TopGearRequest(BaseModel):
     target_error: float = Field(default=0.1, ge=0.1, le=1.0)
     max_upgrade: bool = False
     copy_enchants: bool = False
+    talents: str = ""
 
 
 class ItemInfoRequest(BaseModel):

@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useSimContext } from "./SimContext";
 import FightStyleSelector from "./FightStyleSelector";
+import TalentPicker from "./TalentPicker";
 
 function parseCharacterInfo(input: string) {
   if (!input) return null;
@@ -37,13 +38,15 @@ export default function SimSharedConfig() {
           className="input-field h-44 font-mono text-xs resize-y"
         />
         {detectedInfo && (
-          <p className="text-xs text-gold">
-            {detectedInfo.name} &middot; {detectedInfo.spec}{" "}
-            {detectedInfo.className}
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-gold">
+              {detectedInfo.name} &middot; {detectedInfo.spec}{" "}
+              {detectedInfo.className}
+            </p>
+            <TalentPicker />
+          </div>
         )}
       </div>
-
       <FightStyleSelector value={fightStyle} onChange={setFightStyle} />
     </div>
   );

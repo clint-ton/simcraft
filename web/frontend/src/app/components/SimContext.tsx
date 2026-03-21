@@ -9,6 +9,8 @@ interface SimContextType {
   setFightStyle: (v: string) => void;
   threads: number;
   setThreads: (v: number) => void;
+  selectedTalent: string;
+  setSelectedTalent: (v: string) => void;
 }
 
 const SimContext = createContext<SimContextType | null>(null);
@@ -31,6 +33,7 @@ export function SimProvider({ children }: { children: ReactNode }) {
   const [simcInput, setSimcInput] = useState("");
   const [fightStyle, setFightStyle] = useState("Patchwerk");
   const [threads, _setThreads] = useState(readStoredThreads);
+  const [selectedTalent, setSelectedTalent] = useState("");
 
   const setThreads = useCallback((v: number) => {
     _setThreads(v);
@@ -39,7 +42,7 @@ export function SimProvider({ children }: { children: ReactNode }) {
 
   return (
     <SimContext.Provider
-      value={{ simcInput, setSimcInput, fightStyle, setFightStyle, threads, setThreads }}
+      value={{ simcInput, setSimcInput, fightStyle, setFightStyle, threads, setThreads, selectedTalent, setSelectedTalent }}
     >
       {children}
     </SimContext.Provider>
