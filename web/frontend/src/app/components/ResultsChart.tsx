@@ -1,16 +1,5 @@
 "use client";
 
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-
 interface Ability {
   name: string;
   portion_dps: number;
@@ -44,11 +33,9 @@ export default function ResultsChart({
   playerClass,
   abilities,
 }: ResultsChartProps) {
-  const chartData = abilities.slice(0, 15).map((a) => ({
-    name: a.name.replace(/_/g, " "),
-    dps: Math.round(a.portion_dps),
-    fill: SCHOOL_COLORS[a.school] || SCHOOL_COLORS.physical,
-  }));
+  const totalDps = dps || abilities.reduce((s, a) => s + a.portion_dps, 0);
+  const top = abilities.slice(0, 15);
+  const maxDps = top.length > 0 ? top[0].portion_dps : 1;
 
   return (
     <div className="space-y-6">
@@ -68,43 +55,42 @@ export default function ResultsChart({
       </div>
 
       <div className="card p-5">
-        <h3 className="text-xs font-medium text-muted uppercase tracking-widest mb-5">
-          Ability Breakdown
+        <h3 className="text-xs font-medium text-muted uppercase tracking-widest mb-4">
+          Damage Breakdown
         </h3>
-        <ResponsiveContainer
-          width="100%"
-          height={Math.max(280, chartData.length * 32)}
-        >
-          <BarChart data={chartData} layout="vertical" margin={{ left: 100 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2e" horizontal={false} />
-            <XAxis type="number" stroke="#404044" tick={{ fontSize: 10, fill: "#71717a" }} />
-            <YAxis
-              type="category"
-              dataKey="name"
-              stroke="#404044"
-              tick={{ fontSize: 11, fill: "#a1a1aa" }}
-              width={95}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "#141416",
-                border: "1px solid #2a2a2e",
-                borderRadius: "8px",
-                fontSize: "12px",
-              }}
-              labelStyle={{ color: "#e4e4e7" }}
-              formatter={(value: number) => [
-                `${value.toLocaleString()} DPS`,
-                "Damage",
-              ]}
-            />
-            <Bar dataKey="dps" radius={[0, 3, 3, 0]}>
-              {chartData.map((entry, index) => (
-                <Cell key={index} fill={entry.fill} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+        <div className="space-y-1">
+          {top.map((a, i) => {
+            const color = SCHOOL_COLORS[a.school] || SCHOOL_COLORS.physical;
+            const pct = totalDps > 0 ? (a.portion_dps / totalDps) * 100 : 0;
+            const barWidth = maxDps > 0 ? (a.portion_dps / maxDps) * 100 : 0;
+            const name = a.name.replace(/_/g, " ");
+
+            return (
+              <div key={i} className="group relative flex items-center h-7">
+                {/* Background bar */}
+                <div
+                  className="absolute inset-y-0 left-0 rounded-r opacity-[0.08] group-hover:opacity-[0.14] transition-opacity"
+                  style={{ width: `${barWidth}%`, backgroundColor: color }}
+                />
+                {/* Left edge accent */}
+                <div
+                  className="absolute left-0 top-1 bottom-1 w-[3px] rounded-full"
+                  style={{ backgroundColor: color, opacity: 0.6 }}
+                />
+                {/* Content */}
+                <span className="relative pl-3 text-[12px] text-gray-300 truncate flex-1">
+                  {name}
+                </span>
+                <span className="relative text-[11px] font-mono tabular-nums text-gray-500 w-16 text-right shrink-0">
+                  {Math.round(a.portion_dps).toLocaleString()}
+                </span>
+                <span className="relative text-[11px] font-mono tabular-nums text-gray-500 w-12 text-right shrink-0">
+                  {pct.toFixed(1)}%
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
