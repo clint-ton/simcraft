@@ -29,12 +29,13 @@ export default function SettingsPopover() {
         if (data.threads) {
           setMaxThreads(data.threads);
           if (threads === 0) {
+            // No saved preference — default to 60%
             setThreads(Math.max(1, Math.round(data.threads * 0.6)));
           }
         }
       })
       .catch(() => {});
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps — threads is intentionally captured once
 
   useEffect(() => {
     if (!open) return;

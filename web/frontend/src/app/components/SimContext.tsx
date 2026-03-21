@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
 
 interface SimContextType {
   simcInput: string;
@@ -19,10 +19,23 @@ export function useSimContext() {
   return ctx;
 }
 
+function readStoredThreads(): number {
+  if (typeof window === "undefined") return 0;
+  const v = localStorage.getItem("simhammer_threads");
+  if (v == null) return 0;
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
 export function SimProvider({ children }: { children: ReactNode }) {
   const [simcInput, setSimcInput] = useState("");
   const [fightStyle, setFightStyle] = useState("Patchwerk");
-  const [threads, setThreads] = useState(0);
+  const [threads, _setThreads] = useState(readStoredThreads);
+
+  const setThreads = useCallback((v: number) => {
+    _setThreads(v);
+    try { localStorage.setItem("simhammer_threads", String(v)); } catch {}
+  }, []);
 
   return (
     <SimContext.Provider

@@ -6,6 +6,33 @@ use tempfile::TempDir;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 
+#[cfg(windows)]
+extern "system" {
+    fn OpenProcess(access: u32, inherit: i32, pid: u32) -> *mut std::ffi::c_void;
+    fn SetProcessAffinityMask(h: *mut std::ffi::c_void, mask: usize) -> i32;
+    fn CloseHandle(h: *mut std::ffi::c_void) -> i32;
+}
+
+#[cfg(windows)]
+fn set_process_affinity(pid: u32, threads: u32) {
+    const PROCESS_SET_INFORMATION: u32 = 0x0200;
+    const PROCESS_QUERY_INFORMATION: u32 = 0x0400;
+
+    unsafe {
+        let h = OpenProcess(PROCESS_SET_INFORMATION | PROCESS_QUERY_INFORMATION, 0, pid);
+        if h.is_null() {
+            return;
+        }
+        let mask: usize = if threads as usize >= usize::BITS as usize {
+            usize::MAX
+        } else {
+            (1usize << threads as usize) - 1
+        };
+        SetProcessAffinityMask(h, mask);
+        CloseHandle(h);
+    }
+}
+
 const SIMC_TIMEOUT_SECS: u64 = 600;
 
 fn max_threads() -> u32 {
@@ -119,7 +146,8 @@ async fn run_simc_subprocess(
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+        // CREATE_NO_WINDOW | BELOW_NORMAL_PRIORITY_CLASS
+        cmd.creation_flags(0x08000000 | 0x00004000);
     }
     cmd.arg(input_file.to_str().unwrap_or(""))
         .arg(format!("json2={}", output_file.display()))
@@ -145,11 +173,17 @@ async fn run_simc_subprocess(
     cmd.stdout(std::process::Stdio::piped());
     cmd.stderr(std::process::Stdio::piped());
 
-    println!("Running simc: {}", simc_path.display());
+    println!("Running simc: {} (threads={}, affinity limited)", simc_path.display(), threads);
 
     let mut child = cmd
         .spawn()
         .map_err(|e| format!("Failed to run simc at '{}': {}", simc_path.display(), e))?;
+
+    // Limit CPU affinity so simc can only use the requested number of cores.
+    #[cfg(windows)]
+    if let Some(pid) = child.id() {
+        set_process_affinity(pid, threads);
+    }
 
     // Consume stdout in a background task to prevent pipe deadlock.
     // We only need stdout for error messages; the result goes to the JSON file.
