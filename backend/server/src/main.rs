@@ -11,21 +11,36 @@ fn env_or(key: &str, default: &str) -> String {
 
 #[tokio::main]
 async fn main() {
-    let data_dir = PathBuf::from(env_or("DATA_DIR", "./data"));
+    let desktop_mode = std::env::args().any(|a| a == "--desktop");
+
+    let data_dir = PathBuf::from(env_or("DATA_DIR", "./resources/data"));
     let simc_path = PathBuf::from(env_or("SIMC_PATH", "/usr/local/bin/simc"));
-    let db_path = env_or("DATABASE_URL", "simhammer.db");
-    let bind_host = env_or("BIND_HOST", "0.0.0.0");
-    let port: u16 = env_or("PORT", "8000").parse().expect("PORT must be a number");
     let frontend_dir = std::env::var("FRONTEND_DIR").ok().map(PathBuf::from);
+
+    let bind_host = if desktop_mode {
+        env_or("BIND_HOST", "127.0.0.1")
+    } else {
+        env_or("BIND_HOST", "0.0.0.0")
+    };
+
+    let port: u16 = if desktop_mode {
+        env_or("PORT", "17384")
+    } else {
+        env_or("PORT", "8000")
+    }.parse().expect("PORT must be a number");
 
     println!("Loading game data from {:?}", data_dir);
     game_data::load(&data_dir);
 
-    let storage: Arc<dyn JobStorage> = Arc::new(
-        simhammer_core::storage::sqlite::SqliteStorage::new(&db_path)
-    );
+    let storage: Arc<dyn JobStorage> = if desktop_mode {
+        println!("Starting SimHammer in desktop mode on {}:{}", bind_host, port);
+        Arc::new(simhammer_core::storage::memory::MemoryStorage::new())
+    } else {
+        let db_path = env_or("DATABASE_URL", "simhammer.db");
+        println!("Starting SimHammer server on {}:{}", bind_host, port);
+        Arc::new(simhammer_core::storage::sqlite::SqliteStorage::new(&db_path))
+    };
 
-    println!("Starting SimHammer server on {}:{}", bind_host, port);
     server::start_with_storage_bind(storage, simc_path, &bind_host, port, frontend_dir).await;
 
     // Keep the server running

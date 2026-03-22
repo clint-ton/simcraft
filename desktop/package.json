@@ -2,14 +2,64 @@
   "name": "simhammer-desktop",
   "version": "1.2.0",
   "private": true,
+  "main": "main.js",
   "scripts": {
-    "dev": "tauri dev",
-    "build": "tauri build && node generate-latest.js",
-    "prebuild:frontend": "npm run --prefix ../frontend build:desktop",
-    "copy:frontend": "node -e \"const fs=require('fs');const p=require('path');function cp(s,d){fs.mkdirSync(d,{recursive:true});for(const f of fs.readdirSync(s)){const sp=p.join(s,f),dp=p.join(d,f);fs.statSync(sp).isDirectory()?cp(sp,dp):fs.copyFileSync(sp,dp)}}cp('../frontend/out','../backend/resources/frontend')\""
+    "dev": "node scripts/dev.js",
+    "build": "npm run build:frontend && npm run build:backend && electron-builder",
+    "build:frontend": "npm run --prefix ../frontend build:desktop && node scripts/copy-frontend.js",
+    "build:backend": "node scripts/build-backend.js"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2",
-    "cross-env": "^10.1.0"
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.simhammer.app",
+    "productName": "SimHammer",
+    "files": [
+      "main.js",
+      "preload.js"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/data",
+        "to": "data"
+      },
+      {
+        "from": "resources/simc",
+        "to": "simc"
+      },
+      {
+        "from": "resources/frontend",
+        "to": "frontend"
+      },
+      {
+        "from": "resources/backend",
+        "to": "backend"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "build/icon.ico"
+    },
+    "linux": {
+      "target": ["AppImage", "deb"]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "sortbek",
+      "repo": "simcraft"
+    }
   }
 }

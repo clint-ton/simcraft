@@ -7,38 +7,35 @@ export default function UpdateChecker() {
   const [version, setVersion] = useState("");
   const [installing, setInstalling] = useState(false);
   const [error, setError] = useState("");
-  const [updateRef, setUpdateRef] = useState<any>(null);
 
   useEffect(() => {
-    // Only run in Tauri (desktop) context
-    if (!(window as any).__TAURI_INTERNALS__) return;
+    const api = window.electronAPI;
+    if (!api) return;
 
-    async function checkForUpdate() {
-      try {
-        const { check } = await import("@tauri-apps/plugin-updater");
-        const update = await check();
-        if (update) {
-          setUpdateAvailable(true);
-          setVersion(update.version);
-          setUpdateRef(update);
-        }
-      } catch (e) {
-        // Silently ignore update check failures
-        console.warn("Update check failed:", e);
+    // Listen for update notifications from main process
+    const unlisten = api.onUpdateAvailable((ver) => {
+      setUpdateAvailable(true);
+      setVersion(ver);
+    });
+
+    // Also actively check
+    api.checkForUpdate().then((result) => {
+      if (result) {
+        setUpdateAvailable(true);
+        setVersion(result.version);
       }
-    }
+    }).catch(() => {});
 
-    checkForUpdate();
+    return () => { unlisten(); };
   }, []);
 
   async function handleInstall() {
-    if (!updateRef) return;
+    const api = window.electronAPI;
+    if (!api) return;
     setInstalling(true);
     setError("");
     try {
-      await updateRef.downloadAndInstall();
-      const { relaunch } = await import("@tauri-apps/plugin-process");
-      await relaunch();
+      await api.downloadAndInstall();
     } catch (e: any) {
       setError(e?.message || "Update failed");
       setInstalling(false);

@@ -3,6 +3,10 @@ name = "simhammer-server"
 version.workspace = true
 edition = "2021"
 
+[features]
+default = []
+desktop = ["simhammer-core/desktop"]
+
 [dependencies]
 simhammer-core = { path = "../core", features = ["web"] }
 tokio = { version = "1", features = ["full"] }

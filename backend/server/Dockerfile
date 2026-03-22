@@ -6,9 +6,6 @@ WORKDIR /build
 COPY Cargo.toml ./
 COPY core/ core/
 COPY server/ server/
-# Create stub desktop crate so workspace resolves
-RUN mkdir -p desktop/src && echo "fn main() {}" > desktop/src/main.rs
-COPY desktop/Cargo.toml desktop/Cargo.toml
 
 RUN cargo build --release -p simhammer-server
 
@@ -55,12 +52,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 
 COPY --from=builder /build/target/release/simhammer-server /usr/local/bin/simhammer-server
 COPY --from=simc-builder /usr/local/bin/simc /usr/local/bin/simc
-
-# Download Raidbots game data files via metadata.json
-COPY --from=fetcher /data /app/data
+COPY --from=fetcher /data /app/resources/data
 
 WORKDIR /app
-ENV DATA_DIR=/app/data
+ENV DATA_DIR=/app/resources/data
 ENV SIMC_PATH=/usr/local/bin/simc
 ENV PORT=8000
 

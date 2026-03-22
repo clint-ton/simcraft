@@ -13,11 +13,8 @@ echo "Syncing version: $VERSION"
 sed -i "s/^version = \".*\"/version = \"$VERSION\"/" "$ROOT/backend/Cargo.toml"
 
 # package.json files
-for f in "$ROOT/frontend/package.json" "$ROOT/desktop/package.json"; do
+for f in "$ROOT/frontend/package.json" "$ROOT/desktop/package.json" "$ROOT/package.json"; do
     sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" "$f"
 done
-
-# tauri.conf.json
-sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" "$ROOT/backend/desktop/tauri.conf.json"
 
 echo "Done."

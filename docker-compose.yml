@@ -12,7 +12,7 @@ services:
     volumes:
       - simhammer-db:/app/db
     environment:
-      - DATA_DIR=/app/data
+      - DATA_DIR=/app/resources/data
       - DATABASE_URL=/app/db/simhammer.db
       - PORT=8000
 

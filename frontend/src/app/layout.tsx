@@ -6,7 +6,7 @@ import { SimProvider } from "./components/SimContext";
 import SimSharedConfig from "./components/SimSharedConfig";
 import SimTypeCards from "./components/SimTypeCards";
 import UpdateChecker from "./components/UpdateChecker";
-import WindowTitlebar from "./components/WindowTitlebar";
+import WindowControls from "./components/WindowTitlebar";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -24,7 +24,7 @@ export default function RootLayout({
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `if(window.__TAURI_INTERNALS__)document.documentElement.setAttribute("data-tauri","")`,
+            __html: `if(window.electronAPI)document.documentElement.setAttribute("data-desktop","")`,
           }}
         />
         <Script
@@ -37,12 +37,11 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen">
-        <WindowTitlebar />
         <UpdateChecker />
         <SimProvider>
-          <header className="sticky top-0 z-50 border-b border-border bg-bg/80 backdrop-blur-xl">
-            <div className="max-w-5xl mx-auto px-6 h-12 flex items-center justify-between">
-              <a href="/" className="flex items-center gap-2 group">
+          <header className="sticky top-0 z-50 border-b border-border bg-bg/80 backdrop-blur-xl desktop-drag">
+            <div className="px-6 h-12 flex items-center justify-between">
+              <a href="/" className="flex items-center gap-2 group desktop-no-drag">
                 <div className="w-5 h-5 rounded bg-gold/90 flex items-center justify-center">
                   <svg className="w-3 h-3 text-black" viewBox="0 0 16 16" fill="currentColor">
                     <path d="M3 2l10 6-10 6V2z" />
@@ -52,9 +51,10 @@ export default function RootLayout({
                   SimHammer
                 </span>
               </a>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 desktop-no-drag">
                 <SettingsPopover />
                 <DesktopAppLink />
+                <WindowControls />
               </div>
             </div>
           </header>
@@ -65,12 +65,12 @@ export default function RootLayout({
           </main>
         </SimProvider>
         <footer className="border-t border-border/50 mt-16 py-6">
-          <p className="text-center text-[11px] text-gray-600 max-w-lg mx-auto leading-relaxed">
+          <p className="text-center text-[11px] text-gray-500 max-w-lg mx-auto leading-relaxed">
             SimHammer is a pet project held together by coffee, duct tape, and prayers to the RNG gods.
             Bugs are not features — but they might sim higher than your gear. Use at your own risk.
             Not affiliated with Blizzard, Raidbots, or anyone who knows what they&apos;re doing.
           </p>
-          <p className="text-center text-[10px] text-gray-700 mt-2">v1.0.0</p>
+          <p className="text-center text-[11px] text-gray-600 mt-2">v1.0.0</p>
         </footer>
       </body>
     </html>

@@ -37,10 +37,14 @@
   }
 }
 
-/* Desktop (Tauri) visibility — prevents flicker on navigation */
+/* Desktop (Electron) visibility — prevents flicker on navigation */
 .desktop-only { display: none; }
-html[data-tauri] .desktop-only { display: contents; }
-html[data-tauri] .web-only { display: none; }
+html[data-desktop] .desktop-only { display: contents; }
+html[data-desktop] .web-only { display: none; }
+
+/* Desktop drag regions — only active in Electron */
+html[data-desktop] .desktop-drag { -webkit-app-region: drag; }
+html[data-desktop] .desktop-no-drag { -webkit-app-region: no-drag; }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; }

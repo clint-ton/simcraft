@@ -1,0 +1,11 @@
+{
+  "name": "simhammer",
+  "version": "1.2.0",
+  "private": true,
+  "scripts": {
+    "web": "docker compose up --build",
+    "desktop:dev": "cd desktop && npm run dev",
+    "desktop:build": "cd desktop && npm run build",
+    "kill": "node scripts/kill-ports.js"
+  }
+}

@@ -5,14 +5,11 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "build:desktop": "cross-env TAURI_BUILD=1 NEXT_PUBLIC_API_URL=http://localhost:17384 next build",
+    "build:desktop": "cross-env DESKTOP_BUILD=1 NEXT_PUBLIC_API_URL=http://localhost:17384 next build",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.10.1",
-    "@tauri-apps/plugin-process": "^2.3.1",
-    "@tauri-apps/plugin-updater": "^2.10.0",
     "next": "14.2.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

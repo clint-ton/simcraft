@@ -18,10 +18,9 @@ SimulationCraft made simple. Run sims from your browser or download the desktop 
 frontend/          Next.js 14 app (shared by web + desktop)
 backend/           Cargo workspace (Rust)
   core/            simhammer-core library (API routes, simc runner, game data)
-  server/          simhammer-server (standalone web server binary)
-  desktop/         simhammer (Tauri desktop app binary)
-desktop/           Desktop build scripts (Tauri CLI, copy-frontend, generate-latest)
-data/              Game data JSON files (fetched from Raidbots, gitignored)
+  server/          simhammer-server (standalone binary, --desktop flag for desktop mode)
+  resources/       Runtime resources (data/, simc/, frontend/) — gitignored
+desktop/           Electron app (main process, preload, build scripts)
 docker-compose.yml Web deployment
 ```
 
@@ -48,7 +47,6 @@ This builds everything automatically:
 # Terminal 1 — Backend
 cd backend
 export SIMC_PATH=/path/to/simc
-export DATA_DIR=../data
 cargo run -p simhammer-server
 
 # Terminal 2 — Frontend
@@ -70,21 +68,22 @@ Grab the latest installer from [GitHub Releases](https://github.com/sortbek/simc
 
 ### Build from Source
 
-Prerequisites: Rust, Node.js 20+, simc binary
+Prerequisites: Rust, Node.js 20+
 
 ```bash
-cd desktop
-npm install
-npx tauri dev       # Development
-npx tauri build     # Build installer
+# Development (single command)
+npm run desktop:dev
+
+# Build installer
+npm run desktop:build
 ```
 
 ## Game Data
 
-Game data files are fetched from Raidbots and stored in `data/`. To download or update locally:
+Game data files are fetched from Raidbots and stored in `backend/resources/data/`. To download or update locally:
 
 ```bash
-bash data/fetch-data.sh data/
+bash backend/resources/data/fetch-data.sh backend/resources/data/
 ```
 
 This reads the [Raidbots metadata.json](https://www.raidbots.com/static/data/live/metadata.json) and downloads all listed files. The Docker build does this automatically.
@@ -105,7 +104,7 @@ Browser → Next.js (3000) → Rust/Actix-web (8000) → SQLite → simc subproc
 
 ### Desktop
 ```
-Tauri Window → Next.js → Rust/Actix-web (17384) → simc subprocess
+Electron → Next.js → Rust/Actix-web (17384) → MemoryStorage → simc subprocess
 ```
 
 Both use the same Next.js frontend and the same Rust core library (`simhammer-core`). The core provides API routes, addon parsing, profileset generation, and simc process management. Storage is abstracted via a `JobStorage` trait — the web server uses `SqliteStorage`, the desktop app uses `MemoryStorage`.
@@ -115,7 +114,7 @@ Both use the same Next.js frontend and the same Rust core library (`simhammer-co
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `SIMC_PATH` | `/usr/local/bin/simc` | Path to SimulationCraft binary |
-| `DATA_DIR` | `./data` | Path to game data JSON files |
+| `DATA_DIR` | `./resources/data` | Path to game data JSON files |
 | `DATABASE_URL` | `simhammer.db` | SQLite database path (web only) |
 | `PORT` | `8000` | Server port |
 | `BIND_HOST` | `0.0.0.0` | Server bind address |

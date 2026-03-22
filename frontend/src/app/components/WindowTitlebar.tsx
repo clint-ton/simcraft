@@ -2,91 +2,85 @@
 
 import { useEffect, useState, useCallback } from "react";
 
-export default function WindowTitlebar() {
+export default function WindowControls() {
   const [isMaximized, setIsMaximized] = useState(false);
+  const [hovered, setHovered] = useState<string | null>(null);
 
   const windowAction = useCallback(async (action: "minimize" | "toggleMaximize" | "close") => {
     try {
-      const { getCurrentWindow } = await import("@tauri-apps/api/window");
-      const win = getCurrentWindow();
-      if (action === "minimize") await win.minimize();
+      const api = window.electronAPI;
+      if (!api) return;
+      if (action === "minimize") await api.minimize();
       else if (action === "toggleMaximize") {
-        await win.toggleMaximize();
-        setIsMaximized(await win.isMaximized());
+        await api.toggleMaximize();
+        setIsMaximized(await api.isMaximized());
       }
-      else if (action === "close") await win.close();
+      else if (action === "close") await api.close();
     } catch {}
   }, []);
 
   useEffect(() => {
-    if (!(window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__) return;
-    let unlisten: (() => void) | undefined;
-    (async () => {
-      try {
-        const { getCurrentWindow } = await import("@tauri-apps/api/window");
-        const win = getCurrentWindow();
-        setIsMaximized(await win.isMaximized());
-        unlisten = await win.onResized(async () => {
-          setIsMaximized(await win.isMaximized());
-        });
-      } catch {}
-    })();
-    return () => { unlisten?.(); };
+    const api = window.electronAPI;
+    if (!api) return;
+
+    api.isMaximized().then(setIsMaximized).catch(() => {});
+    const unlisten = api.onMaximizedChange(setIsMaximized);
+    return () => { unlisten(); };
   }, []);
 
   return (
     <div
-      data-tauri-drag-region
       className="desktop-only"
+      style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
     >
-      <div
-        data-tauri-drag-region
-        className="h-8 flex items-center justify-between select-none bg-[#0a0a0a] border-b border-white/[0.06] sticky top-0 z-[100]"
-      >
-        <div data-tauri-drag-region className="flex items-center gap-2 pl-3">
-          <div className="w-3.5 h-3.5 rounded-sm bg-gold/90 flex items-center justify-center">
-            <svg className="w-2 h-2 text-black" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M3 2l10 6-10 6V2z" />
-            </svg>
-          </div>
-          <span data-tauri-drag-region className="text-[11px] font-medium text-gray-500">
-            SimHammer
-          </span>
-        </div>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => windowAction("minimize")}
+          onMouseEnter={() => setHovered("min")}
+          onMouseLeave={() => setHovered(null)}
+          className="w-7 h-7 flex items-center justify-center rounded-md transition-all duration-150 hover:bg-white/[0.08]"
+        >
+          <div className={`w-2.5 h-[1.5px] rounded-full transition-colors duration-150 ${
+            hovered === "min" ? "bg-gray-300" : "bg-gray-600"
+          }`} />
+        </button>
 
-        <div className="flex h-full">
-          <button
-            onClick={() => windowAction("minimize")}
-            className="w-11 h-full flex items-center justify-center text-gray-500 hover:bg-white/[0.06] hover:text-gray-300 transition-colors"
-          >
-            <svg className="w-3 h-[1px]" viewBox="0 0 12 1" fill="currentColor">
-              <rect width="12" height="1" />
+        <button
+          onClick={() => windowAction("toggleMaximize")}
+          onMouseEnter={() => setHovered("max")}
+          onMouseLeave={() => setHovered(null)}
+          className="w-7 h-7 flex items-center justify-center rounded-md transition-all duration-150 hover:bg-white/[0.08]"
+        >
+          {isMaximized ? (
+            <svg className={`w-[10px] h-[10px] transition-colors duration-150 ${
+              hovered === "max" ? "text-gray-300" : "text-gray-600"
+            }`} viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2">
+              <path d="M2.5 3.5h4v4h-4z" />
+              <path d="M3.5 3.5V2.5h4v4h-1" />
             </svg>
-          </button>
-          <button
-            onClick={() => windowAction("toggleMaximize")}
-            className="w-11 h-full flex items-center justify-center text-gray-500 hover:bg-white/[0.06] hover:text-gray-300 transition-colors"
-          >
-            {isMaximized ? (
-              <svg className="w-2.5 h-2.5" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1">
-                <path d="M2 3h5v5H2z" />
-                <path d="M3 3V2h5v5H7" />
-              </svg>
-            ) : (
-              <svg className="w-2.5 h-2.5" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1">
-                <rect x="1" y="1" width="8" height="8" />
-              </svg>
-            )}
-          </button>
-          <button
-            onClick={() => windowAction("close")}
-            className="w-11 h-full flex items-center justify-center text-gray-500 hover:bg-red-500 hover:text-white transition-colors"
-          >
-            <svg className="w-2.5 h-2.5" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M1 1l8 8M9 1l-8 8" />
+          ) : (
+            <svg className={`w-[10px] h-[10px] transition-colors duration-150 ${
+              hovered === "max" ? "text-gray-300" : "text-gray-600"
+            }`} viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2">
+              <rect x="1.5" y="1.5" width="7" height="7" rx="0.5" />
             </svg>
-          </button>
-        </div>
+          )}
+        </button>
+
+        <button
+          onClick={() => windowAction("close")}
+          onMouseEnter={() => setHovered("close")}
+          onMouseLeave={() => setHovered(null)}
+          className={`w-7 h-7 flex items-center justify-center rounded-md transition-all duration-150 ${
+            hovered === "close" ? "bg-red-500/90" : "hover:bg-white/[0.08]"
+          }`}
+        >
+          <svg className={`w-[10px] h-[10px] transition-colors duration-150 ${
+            hovered === "close" ? "text-white" : "text-gray-600"
+          }`} viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+            <path d="M2 2l6 6M8 2l-6 6" />
+          </svg>
+        </button>
       </div>
     </div>
   );

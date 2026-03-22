@@ -4,21 +4,23 @@ SimulationCraft web app + desktop app.
 
 ## Monorepo Structure
 - **frontend/** — Next.js app (shared by web + desktop)
-- **backend/** — Cargo workspace: core library, standalone web server, Tauri desktop app
-- **desktop/** — Desktop build scripts (npm/Tauri CLI, copy-frontend, generate-latest)
-- **data/** — Game data JSON files (fetched from Raidbots, gitignored)
+- **backend/** — Cargo workspace: core library, standalone server binary
+- **backend/resources/** — Runtime resources: `data/` (game JSON), `simc/` (binary), `frontend/` (static export)
+- **desktop/** — Electron app (main process, preload, build config, scripts)
 
 ## Architecture
 
 ### Rust Backend (shared)
 - **Core library** (`backend/core/`): Actix-web routes, game data, addon parser, profileset generator, result parser, simc runner
 - **Storage**: `JobStorage` trait with `MemoryStorage` (desktop) and `SqliteStorage` (web, behind `web` feature flag)
-- **Game Data**: Raidbots static JSON files loaded at startup from `data/`
+- **Game Data**: Raidbots static JSON files loaded at startup from `backend/resources/data/`
 
 ### Desktop
-- **App** (`backend/desktop/`): Tauri shell, uses `simhammer-core` with `desktop` feature
-- **Backend**: Rust + Actix-web (port 17384), in-memory job storage
-- **Frontend**: Same Next.js app (static export for Tauri)
+- **Shell** (`desktop/`): Electron app, spawns Rust backend as child process
+- **Backend**: `simhammer-server --desktop` (port 17384, MemoryStorage, localhost only)
+- **Frontend**: Same Next.js app (static export for Electron, or dev server in dev mode)
+- **Window**: Frameless with custom title bar, uses `-webkit-app-region: drag` + Electron IPC
+- **Auto-updater**: `electron-updater` with GitHub Releases
 - **Sim**: Runs simc directly as subprocess, all CPU cores
 
 ### Web
@@ -38,21 +40,24 @@ cd frontend && npm run dev
 
 ### Desktop
 ```bash
-cd desktop
-npx tauri dev              # Development
-npx tauri build            # Build installer
+# Development (start frontend dev server first, then Electron)
+cd frontend && npm run dev
+cd desktop && npm run dev
+
+# Build installer
+npm run desktop:build
 ```
 
 ## Cargo Workspace (`backend/`)
 ```
-Cargo.toml          — workspace root (members: core, desktop, server)
+Cargo.toml          — workspace root (members: core, server)
 core/               — simhammer-core library (features: desktop, web)
-desktop/            — simhammer (Tauri desktop app)
-server/             — simhammer-server (standalone web server)
+server/             — simhammer-server (standalone binary, features: desktop)
 ```
 
 ## Key Patterns
-- Frontend shared between web and desktop via `lib/api.ts` (auto-detects API URL)
+- Frontend shared between web and desktop via `lib/api.ts` (auto-detects API URL via `window.electronAPI`)
+- Desktop detection: `window.electronAPI` in frontend, `html[data-desktop]` CSS attribute
 - All item/enchant/gem/bonus data from local JSON files, no Wowhead API calls
 - Wowhead tooltips loaded client-side (hover popups only)
 - Single Rust backend serves identical API shape for both web and desktop

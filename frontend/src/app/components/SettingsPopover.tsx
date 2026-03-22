@@ -18,8 +18,7 @@ export default function SettingsPopover() {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const desktop = !!(window as unknown as { __TAURI_INTERNALS__?: unknown })
-      .__TAURI_INTERNALS__;
+    const desktop = !!window.electronAPI;
     setIsDesktop(desktop);
     if (!desktop) return;
 

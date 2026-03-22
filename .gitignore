@@ -1,11 +1,3 @@
-__pycache__/
-*.pyc
-*.pyo
-*.egg-info/
-dist/
-build/
-venv/
-
 .env
 .env.local
 *.db
@@ -22,15 +14,9 @@ Thumbs.db
 .claude/
 .simc-version
 
-# Game data files (downloaded at build time)
-data/*.json
-
-# Updater private key
-desktop/updater-key.pem
-
-# Tauri build output and bundled resources
+# Build output and bundled resources
 backend/target/
-backend/desktop/gen/
 backend/resources/data/*.json
 backend/resources/simc/
 backend/resources/frontend/
+desktop/resources/

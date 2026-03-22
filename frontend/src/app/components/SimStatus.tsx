@@ -33,8 +33,7 @@ function useCpuUsage(isRunning: boolean): number | null {
   const isDesktop = useRef(false);
 
   useEffect(() => {
-    isDesktop.current = !!(window as unknown as { __TAURI_INTERNALS__?: unknown })
-      .__TAURI_INTERNALS__;
+    isDesktop.current = !!window.electronAPI;
   }, []);
 
   useEffect(() => {
@@ -84,7 +83,7 @@ export default function SimStatus({
       <div className="text-center">
         <p className="text-sm text-white font-medium">{title}</p>
         {progressDetail && (
-          <p className="text-xs text-muted mt-1">{progressDetail}</p>
+          <p className="text-[11px] text-gray-400 mt-1">{progressDetail}</p>
         )}
       </div>
 
@@ -95,12 +94,12 @@ export default function SimStatus({
             style={{ width: `${Math.max(displayProgress, status === "pending" ? 2 : 5)}%` }}
           />
         </div>
-        <div className="flex items-center justify-between mt-1.5">
-          <p className="text-[10px] text-gray-600 font-mono tabular-nums">
+        <div className="flex items-center justify-between mt-2">
+          <p className="text-[11px] text-gray-400 font-mono tabular-nums">
             {displayProgress}%
           </p>
           {cpuUsage !== null && (
-            <p className="text-[10px] text-gray-600 font-mono tabular-nums">
+            <p className="text-[11px] text-gray-400 font-mono tabular-nums">
               CPU {Math.round(cpuUsage)}%
             </p>
           )}
@@ -114,7 +113,7 @@ export default function SimStatus({
               <svg className="w-3 h-3 text-emerald-500 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 5L6.5 10.5L4 8" />
               </svg>
-              <span className="text-[11px] text-muted">{stage}</span>
+              <span className="text-[11px] text-gray-400">{stage}</span>
             </div>
           ))}
           {progressStage && (
@@ -124,7 +123,7 @@ export default function SimStatus({
               </div>
               <span className="text-[11px] text-gray-400">
                 {progressStage}
-                {progressDetail && <span className="text-muted"> · {progressDetail}</span>}
+                {progressDetail && <span className="text-gray-500"> · {progressDetail}</span>}
               </span>
             </div>
           )}
