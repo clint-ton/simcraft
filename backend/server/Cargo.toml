@@ -1,0 +1,8 @@
+[package]
+name = "simhammer-server"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+simhammer-core = { path = "../core", features = ["web"] }
+tokio = { version = "1", features = ["full"] }

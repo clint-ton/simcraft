@@ -2,12 +2,12 @@ const fs = require("fs");
 const path = require("path");
 
 const conf = JSON.parse(
-  fs.readFileSync(path.join(__dirname, "src-tauri/tauri.conf.json"), "utf8")
+  fs.readFileSync(path.join(__dirname, "..", "backend", "desktop", "tauri.conf.json"), "utf8")
 );
 const version = conf.version;
 const nsisDir = path.join(
   __dirname,
-  "src-tauri/target/release/bundle/nsis"
+  "..", "backend", "target", "release", "bundle", "nsis"
 );
 
 const sigFile = path.join(nsisDir, `SimHammer_${version}_x64-setup.exe.sig`);

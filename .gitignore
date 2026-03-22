@@ -22,15 +22,14 @@ Thumbs.db
 .claude/
 
 # Game data files (downloaded at build time)
-web/backend/data/*.json
+data/*.json
 
 # Updater private key
 desktop/updater-key.pem
 
 # Tauri build output and bundled resources
-desktop/src-tauri/target/
-desktop/src-tauri/gen/
-desktop/src-tauri/resources/data/*.json
-desktop/src-tauri/resources/simc/
-desktop/src-tauri/resources/frontend/
-desktop/resources/
+backend/target/
+backend/desktop/gen/
+backend/resources/data/*.json
+backend/resources/simc/
+backend/resources/frontend/

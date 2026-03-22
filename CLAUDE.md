@@ -3,34 +3,36 @@
 SimulationCraft web app + desktop app.
 
 ## Monorepo Structure
-- **web/** — Web app (FastAPI backend + Next.js frontend + Docker)
-- **desktop/** — Desktop app (Tauri + Rust backend, bundles simc)
+- **frontend/** — Next.js app (shared by web + desktop)
+- **backend/** — Cargo workspace: core library, standalone web server, Tauri desktop app
+- **desktop/** — Desktop build scripts (npm/Tauri CLI, copy-frontend, generate-latest)
+- **data/** — Game data JSON files (fetched from Raidbots, gitignored)
 
 ## Architecture
 
-### Web
-- **Backend**: Python 3.11 + FastAPI (port 8000)
-- **Worker**: ARQ (async Redis queue) processes simc jobs
-- **Frontend**: Next.js 14 App Router + TypeScript + Tailwind (port 3000)
-- **Database**: SQLite via async SQLAlchemy
-- **Queue**: Redis
-- **Game Data**: Raidbots static JSON files loaded at startup
+### Rust Backend (shared)
+- **Core library** (`backend/core/`): Actix-web routes, game data, addon parser, profileset generator, result parser, simc runner
+- **Storage**: `JobStorage` trait with `MemoryStorage` (desktop) and `SqliteStorage` (web, behind `web` feature flag)
+- **Game Data**: Raidbots static JSON files loaded at startup from `data/`
 
 ### Desktop
-- **Backend**: Rust + Actix-web (port 17384)
+- **App** (`backend/desktop/`): Tauri shell, uses `simhammer-core` with `desktop` feature
+- **Backend**: Rust + Actix-web (port 17384), in-memory job storage
 - **Frontend**: Same Next.js app (static export for Tauri)
 - **Sim**: Runs simc directly as subprocess, all CPU cores
-- **Game Data**: Bundled JSON files in resources/
+
+### Web
+- **Server** (`backend/server/`): Standalone binary, uses `simhammer-core` with `web` feature
+- **Backend**: Rust + Actix-web (port 8000), SQLite job storage
+- **Frontend**: Next.js 14 App Router + TypeScript + Tailwind (port 3000)
 
 ## Commands
 
 ### Web
 ```bash
-cd web
-docker compose up          # Docker
+docker compose up          # Docker (from repo root)
 # or manually:
-cd backend && uvicorn main:app --reload --port 8000
-cd backend && python -m arq worker.tasks.WorkerSettings
+cd backend && cargo run -p simhammer-server
 cd frontend && npm run dev
 ```
 
@@ -41,12 +43,20 @@ npx tauri dev              # Development
 npx tauri build            # Build installer
 ```
 
+## Cargo Workspace (`backend/`)
+```
+Cargo.toml          — workspace root (members: core, desktop, server)
+core/               — simhammer-core library (features: desktop, web)
+desktop/            — simhammer (Tauri desktop app)
+server/             — simhammer-server (standalone web server)
+```
+
 ## Key Patterns
 - Frontend shared between web and desktop via `lib/api.ts` (auto-detects API URL)
 - All item/enchant/gem/bonus data from local JSON files, no Wowhead API calls
 - Wowhead tooltips loaded client-side (hover popups only)
-- Backend serves identical API shape in both Python (web) and Rust (desktop)
-- Deploy only triggers on `web/**` changes
+- Single Rust backend serves identical API shape for both web and desktop
+- `JobStorage` trait abstracts persistence: `MemoryStorage` (desktop), `SqliteStorage` (web)
 - Desktop build uses `output: "export"` with `generateStaticParams` placeholder for `/sim/[id]`
 - Gold accent color: `#C8992A`
 
@@ -54,4 +64,5 @@ npx tauri build            # Build installer
 - `/` — Landing page with sim type cards
 - `/quick-sim` — Quick Sim (DPS + stat weights)
 - `/top-gear` — Top Gear (best gear combination)
+- `/drop-finder` — Drop Finder (droptimizer)
 - `/sim/[id]` — Sim results with real-time progress

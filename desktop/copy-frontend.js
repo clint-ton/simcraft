@@ -15,7 +15,7 @@ function copyDir(src, dest) {
 }
 
 copyDir(
-  path.join(__dirname, "..", "web", "frontend", "out"),
-  path.join(__dirname, "src-tauri", "resources", "frontend")
+  path.join(__dirname, "..", "frontend", "out"),
+  path.join(__dirname, "..", "backend", "resources", "frontend")
 );
 console.log("Copied frontend to src-tauri/resources/frontend");

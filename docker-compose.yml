@@ -1,0 +1,26 @@
+name: simhammer
+
+services:
+  backend:
+    build:
+      context: backend
+      dockerfile: server/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - simhammer-db:/app/db
+    environment:
+      - DATA_DIR=/app/data
+      - DATABASE_URL=/app/db/simhammer.db
+      - PORT=8000
+
+  frontend:
+    build:
+      context: frontend
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    ports:
+      - "3000:3000"
+
+volumes:
+  simhammer-db:
