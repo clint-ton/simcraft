@@ -7,6 +7,7 @@ interface ElectronAPI {
   checkForUpdate: () => Promise<{ version: string } | null>;
   downloadAndInstall: () => Promise<void>;
   onUpdateAvailable: (callback: (version: string) => void) => () => void;
+  onDownloadProgress: (callback: (percent: number) => void) => () => void;
 }
 
 interface Window {

@@ -140,9 +140,19 @@ function setupAutoUpdater() {
   try {
     const { autoUpdater } = require("electron-updater");
     autoUpdater.autoDownload = false;
+    autoUpdater.disableDifferentialDownload = true;
+
+    let availableUpdate = null;
 
     autoUpdater.on("update-available", (info) => {
-      mainWindow?.webContents.send("updater:update-available", info.version);
+      if (info.version !== app.getVersion()) {
+        availableUpdate = { version: info.version };
+        mainWindow?.webContents.send("updater:update-available", info.version);
+      }
+    });
+
+    autoUpdater.on("download-progress", (progress) => {
+      mainWindow?.webContents.send("updater:download-progress", progress.percent);
     });
 
     autoUpdater.on("error", (err) => {
@@ -150,12 +160,12 @@ function setupAutoUpdater() {
     });
 
     ipcMain.handle("updater:check", async () => {
+      // Return cached result if we already detected an update
+      if (availableUpdate) return availableUpdate;
       try {
-        const result = await autoUpdater.checkForUpdates();
-        if (result?.updateInfo && result.updateInfo.version !== app.getVersion()) {
-          return { version: result.updateInfo.version };
-        }
-        return null;
+        await autoUpdater.checkForUpdates();
+        // Result is set via update-available event above
+        return availableUpdate;
       } catch {
         return null;
       }

@@ -6,6 +6,7 @@ export default function UpdateChecker() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [version, setVersion] = useState("");
   const [installing, setInstalling] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -26,7 +27,11 @@ export default function UpdateChecker() {
       }
     }).catch(() => {});
 
-    return () => { unlisten(); };
+    const unlistenProgress = api.onDownloadProgress((percent) => {
+      setProgress(Math.round(percent));
+    });
+
+    return () => { unlisten(); unlistenProgress(); };
   }, []);
 
   async function handleInstall() {
@@ -68,7 +73,7 @@ export default function UpdateChecker() {
               disabled={installing}
               className="px-3 py-1.5 text-xs font-medium rounded bg-gold text-black hover:bg-gold/90 disabled:opacity-50 transition-colors"
             >
-              {installing ? "Installing..." : "Install & restart"}
+              {installing ? `Downloading ${progress}%` : "Install & restart"}
             </button>
             <button
               onClick={() => setUpdateAvailable(false)}

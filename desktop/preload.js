@@ -20,4 +20,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("updater:update-available", handler);
     return () => ipcRenderer.removeListener("updater:update-available", handler);
   },
+  onDownloadProgress: (callback) => {
+    const handler = (_event, percent) => callback(percent);
+    ipcRenderer.on("updater:download-progress", handler);
+    return () => ipcRenderer.removeListener("updater:download-progress", handler);
+  },
 });
