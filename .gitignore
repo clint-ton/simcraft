@@ -20,6 +20,7 @@ Thumbs.db
 *.tsbuildinfo
 
 .claude/
+.simc-version
 
 # Game data files (downloaded at build time)
 data/*.json

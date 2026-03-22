@@ -37,8 +37,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     make \
     && rm -rf /var/lib/apt/lists/*
 
+# Pin to a specific commit — Docker caches this layer until the hash changes.
+# Update SIMC_VERSION to rebuild with a newer SimC version.
+ARG SIMC_VERSION=HEAD
 RUN git clone --depth 1 https://github.com/simulationcraft/simc.git /tmp/simc \
-    && cd /tmp/simc/engine \
+    && cd /tmp/simc \
+    && if [ "$SIMC_VERSION" != "HEAD" ]; then git fetch --depth 1 origin "$SIMC_VERSION" && git checkout FETCH_HEAD; fi \
+    && cd engine \
     && make -j$(nproc) OPENSSL=0 \
     && cp simc /usr/local/bin/simc \
     && rm -rf /tmp/simc

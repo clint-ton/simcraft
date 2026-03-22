@@ -5,6 +5,8 @@ services:
     build:
       context: backend
       dockerfile: server/Dockerfile
+      args:
+        - SIMC_VERSION=${SIMC_VERSION:-HEAD}
     ports:
       - "8000:8000"
     volumes:
