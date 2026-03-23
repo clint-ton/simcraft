@@ -620,6 +620,10 @@ async fn get_max_upgrade_ilevels(body: web::Json<Vec<Value>>) -> HttpResponse {
     HttpResponse::Ok().json(results)
 }
 
+async fn list_upgrade_tracks() -> HttpResponse {
+    HttpResponse::Ok().json(game_data::get_upgrade_tracks())
+}
+
 async fn get_upgrade_options(query: web::Query<BonusIdsQuery>) -> HttpResponse {
     let ids: Vec<u64> = query
         .bonus_ids
@@ -774,6 +778,7 @@ pub async fn start_with_storage_bind(
             .route("/api/gem-info/{id}", web::get().to(get_gem_info))
             .route("/api/max-upgrade-ilevels", web::post().to(get_max_upgrade_ilevels))
             .route("/api/upgrade-options", web::get().to(get_upgrade_options))
+            .route("/api/upgrade-tracks", web::get().to(list_upgrade_tracks))
             .route("/api/droptimizer/sim", web::post().to(create_droptimizer_sim))
             .route("/api/instances", web::get().to(list_instances))
             .route("/api/instances/type/{type}/drops", web::get().to(get_drops_by_type))
